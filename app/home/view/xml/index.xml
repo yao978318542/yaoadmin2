@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<krpano>
+    <!--
+    zh zh中文en英文tw繁体
+    open_animation 开场动画
+    asteroid 小行星特效
+    -->
+    <global_setting
+        name="global_setting"
+        zh="zh"
+        open_animation="1"
+        open_animation_data="{$open_animation_data}"
+        overview="1"
+        asteroid="1"
+    />
+</krpano>

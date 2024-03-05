@@ -1,0 +1,237 @@
+{extend name="Public:index" /}
+{block name="main"}
+<div class="nk-content ">
+    <div class="container-fluid">
+        <div class="nk-content-inner">
+            <div class="nk-content-body">
+                <div class="components-preview wide-md mx-auto">
+
+                    <div class="nk-block nk-block-lg">
+                        <div class="nk-block-head">
+                            <div class="nk-block-head-content">
+                                <h4 class="title nk-block-title">权限分组</h4>
+                                <div class="nk-block-des">
+                                    <p>为分组添加相应的权限功能</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card card-preview">
+                            <form id="group_sub" action="#" >
+                                <div class="card-inner">
+                                    <div class="form-group">
+                                        <label class="form-label" >分组名称</label>
+                                        <div class="form-control-wrap">
+                                            <input type="text" class="form-control" id="group_title" name="group_title" placeholder="分组名称">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label" >分组权限</label>
+                                        <div class="form-control-wrap">
+                                            <div id="tree"></div>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">是否开启</label>
+                                        <div class="form-control-wrap  custom-switch">
+                                            <input type="checkbox" class="custom-control-input" checked id="group_status"  value="1">
+                                            <label class="custom-control-label"  for="group_status">选择</label>
+                                        </div>
+                                    </div>
+                                    <button type="submit" id="submint" class="btn btn-primary" style="float: right" >提 交</button>
+                                </div>
+                            </form>
+
+                        </div>
+                        <!-- .code-block -->
+                    </div>
+                    <!-- .nk-block -->
+                </div><!-- .components-preview -->
+            </div>
+        </div>
+    </div>
+</div>
+<style>
+    .glyphicon-plus:before {
+        content: "\2b";
+    }
+    .glyphicon-minus:before {
+        content: "\2212";
+    }
+    .glyphicon-check:before {
+        content: "\e067";
+    }
+    .glyphicon-unchecked:before {
+        content: "\e157";
+    }
+</style>
+<script src="/demo/src/assets/js/public.js"></script>
+<script src="/demo/src/assets/js/bootstrap-treeview.js"></script>
+<script type="application/javascript">
+    var tree_obj;
+    var id="<?php echo $id;?>"
+    window.onload = function(){
+        if(id){
+            $.ajax({
+                url: '/admin/auth/group_edit',
+                type : "post",
+                dataType : "json",
+                data:{"id":id},
+                success : function(data) {
+                    let info=data.data.info
+                    $("#group_title").val(info.title)
+                    if(info.status){
+                        $("#option_status").prop("checked",true);
+                    }else{
+                        $("#option_status").prop("checked",false);
+                    }
+                },
+                error:function () {
+                    toast("访问出错","error");
+                }
+            });
+        }
+        $.ajax({
+            url: '/admin/auth/get_auth_list',
+            type : "post",
+            dataType : "json",
+            data:{"id":id},
+            success : function(data) {
+                let tree=data.data.tree_list;
+                tree_obj=$('#tree').treeview({
+                    data: tree,
+                    showIcon: false,
+                    showCheckbox: true,
+                    onNodeChecked:nodeChecked ,
+                    onNodeUnchecked:nodeUnchecked,
+                });
+
+
+            }
+        });
+        var nodeCheckedSilent = false;
+        function nodeChecked (event, node){
+            if(nodeCheckedSilent){
+                return;
+            }
+            nodeCheckedSilent = true;
+            checkAllParent(node);
+            checkAllSon(node);
+            nodeCheckedSilent = false;
+        }
+        var nodeUncheckedSilent = false;
+        function nodeUnchecked  (event, node){
+            if(nodeUncheckedSilent)
+                return;
+            nodeUncheckedSilent = true;
+            uncheckAllParent(node);
+            uncheckAllSon(node);
+            nodeUncheckedSilent = false;
+        }
+        //选中全部父节点
+        function checkAllParent(node){
+            $('#tree').treeview('checkNode',node.nodeId,{silent:true});
+            var parentNode = $('#tree').treeview('getParent',node.nodeId);
+            if(!("nodeId" in parentNode)){
+                return;
+            }else{
+                checkAllParent(parentNode);
+            }
+        }
+        //取消全部父节点
+        function uncheckAllParent(node){
+            $('#tree').treeview('uncheckNode',node.nodeId,{silent:true});
+            var siblings = $('#tree').treeview('getSiblings', node.nodeId);
+            var parentNode = $('#tree').treeview('getParent',node.nodeId);
+            if(!("nodeId" in parentNode)) {
+                return;
+            }
+            var isAllUnchecked = true;  //是否全部没选中
+            for(var i in siblings){
+                if(siblings[i].state.checked){
+                    isAllUnchecked=false;
+                    break;
+                }
+            }
+            if(isAllUnchecked){
+                uncheckAllParent(parentNode);
+            }
+        }
+        //级联选中所有子节点
+        function checkAllSon(node){
+            $('#tree').treeview('checkNode',node.nodeId,{silent:true});
+            if(node.nodes!=null&&node.nodes.length>0){
+                for(var i in node.nodes){
+                    checkAllSon(node.nodes[i]);
+                }
+            }
+        }
+        //级联取消所有子节点
+        function uncheckAllSon(node){
+            $('#tree').treeview('uncheckNode',node.nodeId,{silent:true});
+            if(node.nodes!=null&&node.nodes.length>0){
+                for(var i in node.nodes){
+                    uncheckAllSon(node.nodes[i]);
+                }
+            }
+        }
+        //表单提交
+        $("#group_sub").validate({
+            rules:
+                {
+                    group_title:
+                        {
+                            required: true,
+                            maxlength: 15
+                        },
+                },
+            messages:{
+                group_title:
+                    {
+                        required: "分组名称不能为空",
+                        maxlength: "不能大于15位"
+                    },
+            },
+            submitHandler:function (form) {
+                //获取有所选中的节点
+                let checked=$('#tree').treeview('getChecked');
+                let rules=[];
+                if(!checked.length){
+                    toast('请选择权限','error');return;
+                }else{
+                    for(let i=0;i<checked.length;i++){
+                        rules.push(checked[i].id);
+                    }
+                }
+                load_add("submint");
+                $.ajax({
+                    url: "/admin/auth/group_add",
+                    type: "post",
+                    dataType: "json",
+                    data: {
+                        id:id,
+                        title:$("#group_title").val(),
+                        rules:rules,
+                        status:$("#group_status:checked").val(),
+                    },
+                    success: function (data) {
+                        load_end("submint");
+                        if(data.status==200){
+                            toast(data.message,'','',function () {
+                                window.location.href="/admin/auth/group_index";
+                            });
+
+                        }else{
+                            toast(data.message,"error");
+                        }
+                    },
+                    error:function () {
+                        toast("访问出错","error","",function () {
+                            load_end("submint");
+                        });
+                    }
+                })
+            }
+        });
+    }
+</script>
+{/block}
